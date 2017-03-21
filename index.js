@@ -3,12 +3,12 @@ const secrets = require( './secrets.js' );
 const twilio = require( 'twilio' )( secrets.twilioSid, secrets.twilioSecret );
 const request = require( 'request-promise' );
 const cheerio = require( 'cheerio' );
+const moment = require( 'moment' );
 
   // 1 hour = 3600000ms
 const intervalCheck = 3600000;
 
 let parseBody = ( res ) => {
-  let timeNow = new Date().getTime()
 
   if ( res.statusCode !== 200 ) return Promise.reject( new Error( `req error: statusCode: ${ res.statusCode }` ) );
   let $ = cheerio.load( res.body );
@@ -18,7 +18,9 @@ let parseBody = ( res ) => {
     let postTime = new Date( $( this ).find( '.result-date' ).attr( 'datetime' ) )
     let url = $( this ).find( '.result-title' ).attr( 'href' );
 
-    if ( isWithinTheHour( postTime, timeNow ) ) results.push( [ url ] )
+    if ( isWithinTheHour( postTime ) ) {
+      results.push( [ url ] )
+    }
 
   } );
 
@@ -134,9 +136,8 @@ setInterval( run, intervalCheck )
 
 
 // util
-
-let isWithinTheHour = ( postTime, timeNow ) => {
-  let diff = timeNow - postTime.getTime()
+let isWithinTheHour = ( postTime ) => {
+  let diff = moment().format('x') - moment( postTime, 'x' )
   if ( diff <= intervalCheck ) {
     return true
   }
