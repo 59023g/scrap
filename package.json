@@ -1,13 +1,12 @@
 {
   "name": "scrap",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "basic scrapper",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
   },
-  "author": "",
+  "author": "Michael Pierce - @59023g",
   "license": "MIT",
   "dependencies": {
     "cheerio": "^0.22.0",
