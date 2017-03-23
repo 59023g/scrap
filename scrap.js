@@ -5,19 +5,20 @@ const request = require( 'request-promise' );
 const cheerio = require( 'cheerio' );
 const moment = require( 'moment' );
 
-  // 1 hour = 3600000ms
-const intervalCheck = 3600000;
 
+// parses response, uses jquery of nodejs: cherrio, to travel page's DOM string
 let parseBody = ( res ) => {
 
   if ( res.statusCode !== 200 ) return Promise.reject( new Error( `req error: statusCode: ${ res.statusCode }` ) );
+
   let $ = cheerio.load( res.body );
   let results = [];
 
   $( 'li.result-row' ).each( function( i, elem ) {
-    let postTime = new Date( $( this ).find( '.result-date' ).attr( 'datetime' ) )
+    let postTime = $( this ).find( '.result-date' ).attr( 'datetime' );
     let url = $( this ).find( '.result-title' ).attr( 'href' );
 
+    // check if post within the hour
     if ( isWithinTheHour( postTime ) ) {
       results.push( [ url ] )
     }
@@ -25,14 +26,14 @@ let parseBody = ( res ) => {
   } );
 
   if ( results.length === 0 ) {
-    return Promise.reject( 'no results' )
+    return Promise.reject( 'parseBody(): no results' )
   }
 
   return Promise.resolve( results )
 }
 
 
-// this shortens the url because carrier's block messages which contain a craigslist URL
+// this shortens the url because carrier's block messages which contain a craigslist URL - ideally i would not be using google for this
 let getShortUrl = ( results ) => {
   return new Promise( ( resolve, reject ) => {
 
@@ -67,6 +68,7 @@ let getShortUrl = ( results ) => {
 
           request( options )
             .then( shortUrl => {
+              // i'm replacing the orginal url with the parsed one
               results[ i ].pop();
               return resolve( results[ i ].concat( shortUrl.id ) );
             } )
@@ -79,7 +81,7 @@ let getShortUrl = ( results ) => {
         resolve( success )
       } )
       .catch( err => {
-        reject( 'loopPromiseArr Error' )
+        reject( `getShortUrl() Error: ${ err }` )
       } );
 
   } )
@@ -96,11 +98,9 @@ let sendSms = ( results ) => {
         from: secrets.from
       }, function( err, data ) {
         if ( err ) {
-          console.error( 'Could not notify administrator' );
-          console.error( err );
-          return Promise.reject( `Error sending SMS: ${ err }` )
+          return Promise.reject( `sendSms(): Error: ${ err }` )
         } else {
-          return Promise.resolve( `Success sending SMS` )
+          return Promise.resolve( `SendSms(): success:` )
         }
       } ) )
 
@@ -111,35 +111,43 @@ let sendSms = ( results ) => {
         resolve( success )
       } )
       .catch( err => {
-        reject( `loopPromiseArr Error ${ err }` )
+        reject( `${ err }` )
       } );
 
   } )
 
 }
 
-let run = () => {
+let run = ( res ) => {
   request( {
       uri: secrets.hostName + secrets.reqPath,
       resolveWithFullResponse: true
     } )
     .then( parseBody )
-    .then( getShortUrl )
+    .then( results => {
+      if ( res ) console.log( `${ results.length }`)
+      getShortUrl( results )
+    })
     .then( sendSms )
-    .then( result => console.log( 'result success' ) )
-    .catch( err => console.log( err ) )
+    .then( result => console.log( 'result success', result ) )
+    .catch( err => {
+      // ideally results.length 0 should not be an error
+      if ( res ) res.end( `${ 0 }`)
+      console.log( err )
+    })
 }
 
-run();
-// every hour
-setInterval( run, intervalCheck )
-
-
 // util
+
+// ideally this would interface with intervalCheck
 let isWithinTheHour = ( postTime ) => {
-  let diff = moment().format('x') - moment( postTime, 'x' )
-  if ( diff <= intervalCheck ) {
+  let now = moment().utc()
+  let post = moment( postTime ).utc()
+  let diff = moment.duration( now - post ).asHours();
+  if ( diff <= 1 ) {
     return true
   }
   return false
 }
+
+module.exports = { run: run }
