@@ -126,7 +126,7 @@ let run = ( res ) => {
     .then( parseBody )
     .then( results => {
       if ( res ) console.log( `${ results.length }`)
-      getShortUrl( results )
+     return getShortUrl( results )
     })
     .then( sendSms )
     .then( result => console.log( 'result success', result ) )
@@ -140,14 +140,24 @@ let run = ( res ) => {
 // util
 
 // ideally this would interface with intervalCheck
+
 let isWithinTheHour = ( postTime ) => {
   let now = moment().utc()
-  let post = moment( postTime ).utc()
-  let diff = moment.duration( now - post ).asHours();
-  if ( diff <= 1 ) {
+  let post = moment(postTime).utc()
+  let newDiff = moment.duration( now - post ).asHours();
+  let neww = newDiff - 7;
+  if ( neww <= 1 ) {
+    console.log('here')
     return true
   }
   return false
 }
+
+
+
+
+
+
+
 
 module.exports = { run: run }
